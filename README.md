@@ -1,6 +1,42 @@
 # SauceDemo Test Automation
 
-Selenium WebDriver test automation project for the [saucedemo.com](https://www.saucedemo.com/) login functionality. Built as a learning project to practice core test automation concepts: design patterns, BDD, parallel execution, and structured logging.
+Selenium WebDriver test automation project for the saucedemo.com login functionality. Built as a learning project to practice core test automation concepts: design patterns, BDD, parallel execution, and structured logging.
+
+## Prerequisites
+
+- Java 23 (JDK)
+- Maven 3.x
+- Chrome and Firefox browsers installed
+
+## How to Run
+
+```bash
+# Run all tests — Chrome and Firefox in parallel
+mvn clean test
+
+# Run in headless mode (no browser window)
+mvn clean test -Dheadless=true
+
+# Chrome only
+mvn clean test -Dtest=ChromeRunnerTest
+
+# Firefox only
+mvn clean test -Dtest=FirefoxRunnerTest
+```
+
+Chrome and Firefox run simultaneously in separate JVM forks via Maven Surefire (`forkCount=2`). Each fork uses its own runner class and browser-specific hooks.
+
+After a test run, open `target/cucumber-reports/report.html` in your browser for the Cucumber HTML report.
+
+## Test Cases
+
+All three use cases are implemented as Cucumber **Scenario Outlines** with Examples tables, giving **4 scenario executions** total per browser.
+
+| UC | Scenario | Expected Result | Example Rows |
+|----|----------|----------------|-------------|
+| UC-1 | Empty credentials (both fields cleared) | Error: "Epic sadface: Username is required" | 1 |
+| UC-2 | Username only (password cleared after entry) | Error: "Epic sadface: Password is required" | 1 |
+| UC-3 | Valid login | Dashboard title shows "Swag Labs" | 2 (`standard_user`, `visual_user`) |
 
 ## Tech Stack
 
@@ -13,16 +49,6 @@ Selenium WebDriver test automation project for the [saucedemo.com](https://www.s
 | AssertJ | 3.26.3 |
 | SLF4J + Logback | 1.5.6 |
 | Locators | CSS selectors only |
-
-## Test Cases
-
-All three use cases are implemented as Cucumber **Scenario Outlines** with Examples tables, giving **4 scenario executions** total per browser.
-
-| UC | Scenario | Expected Result | Example Rows |
-|----|----------|----------------|-------------|
-| UC-1 | Empty credentials (both fields cleared) | Error: "Epic sadface: Username is required" | 1 |
-| UC-2 | Username only (password cleared after entry) | Error: "Epic sadface: Password is required" | 1 |
-| UC-3 | Valid login | Dashboard title shows "Swag Labs" | 2 (`standard_user`, `visual_user`) |
 
 ## Design Patterns
 
@@ -47,6 +73,7 @@ saucedemo-ta/
 │   │   │   ├── Config.java                   # Centralized config (URL, timeout, headless)
 │   │   │   └── LoggingDriverDecorator.java   # Decorator — logs all WebDriver actions
 │   │   ├── pages/
+│   │   │   ├── BasePage.java                 # Abstract base — holds WebDriver + goTo() helper
 │   │   │   ├── LoginPage.java                # Login page object
 │   │   │   └── ProductsPage.java             # Products/dashboard page object
 │   │   └── utils/
@@ -69,50 +96,7 @@ saucedemo-ta/
 │           ├── junit-platform.properties      # Cucumber plugin config
 │           └── logback.xml                    # Logging configuration
 ├── pom.xml
-├── CLAUDE.md
 └── README.md
 ```
 
-## How to Run
-
-```bash
-# Run all tests — Chrome and Firefox in parallel
-mvn clean test
-
-# Run in headless mode (no browser window)
-mvn clean test -Dheadless=true
-```
-
-Both browsers execute automatically in parallel — no additional configuration needed.
-
-## Parallel Execution
-
-Parallel execution is handled at the Maven Surefire level:
-
-- **Two runner classes**: `ChromeRunnerTest` and `FirefoxRunnerTest`, each configured with its own `@ConfigurationParameter` pointing to the appropriate hooks package.
-- **Surefire config**: `forkCount=2` and `reuseForks=false` — each runner runs in its own JVM fork.
-- **Browser isolation**: Browser-specific hooks (`ChromeHooks`, `FirefoxHooks`) call `System.setProperty("browser", ...)` in their `@Before` method, ensuring each fork creates the correct browser type.
-
-## Reports
-
-Cucumber generates an HTML report at:
-
-```
-target/cucumber-reports/report.html
-```
-
-Configured in `junit-platform.properties`:
-
-```properties
-cucumber.plugin=pretty, html:target/cucumber-reports/report.html
-```
-
-## Key Design Decisions
-
-- **WaitUtils**: Static utility class wrapping `WebDriverWait` + `ExpectedConditions` with a default timeout of 10 seconds (via `Config.TIMEOUT`). Page objects use `WaitUtils.waitForElementVisible()` instead of raw `driver.findElement()` for elements that may not be immediately available.
-
-- **Config**: Centralized configuration class in `core/` holding `BASE_URL`, `TIMEOUT`, and `HEADLESS` properties. Keeps magic values out of page objects and factories.
-
-- **OS-aware field clearing**: `LoginPage` uses `CMD+A` on macOS or `CTRL+A` on other systems, followed by backspace, instead of Selenium's `clear()`. This works reliably with React-controlled inputs where `clear()` may not trigger change events.
-
-- **Standalone page objects**: Each page object (`LoginPage`, `ProductsPage`) receives WebDriver via constructor injection. There is no `BasePage` — the design stays simple since shared navigation logic is not needed for this scope.
+*By Eduardo Richards*
